@@ -59,10 +59,13 @@ class Game(object):
 	def subPeople(self):
 		self.peopleNum -= 1
 		
-	def backAction(self, backNames):
+	def backAction(self, backNames, sim=False):
 		getNum = 0
+		j = 0
 		for i in self.putDiamonds:
 			getNum += i / len(backNames)
+			if sim is False: self.putDiamonds[j] -= (getNum * len(backNames))
+			j += 1
 		return getNum
 		
 class Human(object):
@@ -93,7 +96,7 @@ class Me(Human):
 	"""
 	def brain(self,othsCls,freq,GameObj,cnt):
 		backNum = reduce(lambda x,y:x+y,[1 if othCls.judge(freq) is False else 0 for othCls in othsCls.values()])
-		backGetNum = GameObj.backAction([True for i in range(backNum+1)]) #Trueはダミーデータ
+		backGetNum = GameObj.backAction([True for i in range(backNum+1)],sim=True) #Trueはダミーデータ
 		freq = GameObj.freq(backNum)
 		goGetNum = freq[0]
 		trblFreq = freq[1]
@@ -114,11 +117,6 @@ def main():
 	print 
 	MeObj = Me()
 	OthsObj = {name:Human() for name in names}
-	#for name in names:
-	#	#print "Please number of",name,"diamonds :",
-	#	#diamonds = raw_input()
-	#	#print
-	#	OthsObj.update({name:Human()})
 	for num in range(gameNum):
 		print cards
 		NextObj = {}
@@ -128,10 +126,11 @@ def main():
 		print "New Game !!"
 		print "#"*20
 		breakMe = False
+		breaked = False
 		while len(OthsObj)!=0 or breakMe is False:
 			for name in OthsObj:
-				print name,OthsObj[name].diamonds
-			print "Me",MeObj.diamonds
+				print name,OthsObj[name].diamonds,OthsObj[name].getDia
+			print "Me",MeObj.diamonds,MeObj.getDia
 			
 			while True:
 				try:
@@ -152,7 +151,8 @@ def main():
 				if breakMe is False:
 					MeObj.addDiamond(getNum)
 			freq = GameObj.freq()
-			breakMe = MeObj.brain(OthsObj,freq,GameObj,cnt)
+			if breakMe is False:
+				breakMe = MeObj.brain(OthsObj,freq,GameObj,cnt)
 			print "*"*10
 			print breakMe
 			print "*"*10
@@ -162,27 +162,31 @@ def main():
 					tmp = raw_input()
 					if len(tmp):
 						backNames = tmp.split(",")
-						if breakMe: #他の人と一緒に自分も帰るとき
+						if breakMe and breaked is False: #他の人と一緒に自分も帰るとき
 							backNames.append("Me")
 						getNum = GameObj.backAction(backNames)
 						for backName in backNames:
-							if backName == "Me":
+							if backName == "Me" and breaked is False:
 								MeObj.addDiamond(getNum)
+								MeObj.getDia += MeObj.diamonds
+								MeObj.diamonds = 0
+								breaked = True
 							else:
 								OthsObj[backName].addDiamond(getNum)
 								NextObj[backName] = Human( getDia = OthsObj[backName].diamonds + OthsObj[backName].getDia, judgeParam = freq[1] )
 								del OthsObj[backName]
 							GameObj.subPeople()
-					elif breakMe:
+					elif breakMe and breaked is False:
 						getNum = GameObj.backAction(["Me"])
 						MeObj.addDiamond(getNum)
+						MeObj.getDia += MeObj.diamonds
+						MeObj.diamonds = 0
+						breaked = True
 							
 					break
 				except KeyError:
 					print "KeyError :",backName
 					continue
-		if breakMe is False: MeObj.diamonds = 0
-		else : MeObj.getDia += MeObj.diamonds
 			
 		for name in OthsObj.keys():
 			NextObj[name] =  Human( getDia = OthsObj[name].getDia )
